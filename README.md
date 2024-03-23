@@ -1,6 +1,6 @@
 # onkyo-api
 
-Use a Raspberry Pi Zero to expose an API to my Onkyo Receiver for an iOS app.
+Use a Raspberry Pi Zero to expose an API to my Onkyo Receiver for an iOS app or bOS integration.
 
 ## Install
 
@@ -57,6 +57,19 @@ $ curl -X "PUT" "http://localhost:8080/onkyo/main/volume/55"
 ```json
 {
   "volume": 55,
+  "zone": "main"
+}
+```
+
+### Changing TuneIn preset
+PUT `/onkyo/<zone>/tunein/preset`
+```sh
+$ curl -X "PUT" "http://localhost:8080/onkyo/main/tunein/2"
+```
+
+```json
+{
+  "preset": 2,
   "zone": "main"
 }
 ```
