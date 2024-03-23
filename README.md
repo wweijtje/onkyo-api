@@ -71,7 +71,7 @@ $ crontab -e # edit cron table
 
 ## Author
 
-Daniel Bowden
+Wout Weijtjens, Original repo forked from Daniel Bowden
 
 [github.com/danielbowden](https://github.com/danielbowden)
 
