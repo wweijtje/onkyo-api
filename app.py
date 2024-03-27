@@ -11,7 +11,7 @@ SOURCE_TV = 'cd,tv/cd'
 
 @app.route('/')
 def index():
-    return "Onkyo API says hello!"
+    return f"Onkyo API says hello!  Receiver at {receiver_address}"
 
 def _get_power_status(receiver:eiscp.eISCP,zone='main'):
     """
@@ -27,6 +27,27 @@ def _get_power_status(receiver:eiscp.eISCP,zone='main'):
         power_status = power_status[0]
 
     return power_status
+
+@app.route('/onkyo/discover', methods=['POST'])
+def discover():
+    # Forces to search for the receiver_address
+    global receiver_address
+    receivers = eiscp.eISCP.discover(timeout=5)
+    print('test')
+    print(receivers)
+    receivers_output = []
+    for r in receivers:
+        receivers_output.append(
+            {
+                'device':r.info['model_name'],
+                'host':r.host,
+                'port':r.port
+            }
+        )
+    receiver_address = receivers_output[0]['host']
+    return jsonify(receivers_output)
+
+
 
 @app.route('/onkyo/<string:zone>/status', methods=['GET'])
 def get_status(zone):
@@ -59,9 +80,9 @@ def set_power(zone, status):
         return 'unknown status', 400
     print(f'Received {zone}.power={status}')
     receiver = eiscp.eISCP(receiver_address)
-    receiver.command(zone + '.power=' + status)
+    receiver.command(f'{zone}.power={status}')
     receiver.disconnect()
-    return get_status()
+    return get_status(zone)
 
 @app.route('/onkyo/<string:zone>/volume/<int:level>', methods=['POST'])
 def set_volume(zone, level):
@@ -99,9 +120,10 @@ def set_tunein_preset(zone, preset):
         status = _get_power_status(receiver, zone=zone)
         if status == 'standby':
             # Turn device on and wait a bit
-            receiver.command(zone + '.power=' + status)
+            receiver.command(zone + '.power=on')
             sleep(3)
 
+        receiver.command(f'{zone}.volume=80') # Sets a default volume
         _ = receiver.raw("SLI2B") # Set to NET
 
         receiver.send("NSV0E0") # Set to Tunein
@@ -136,39 +158,11 @@ import eiscp
 
 app = Flask(__name__)
 app.debug = True
-receiver_address = '192.168.86.27'
-SOURCE_TV = 'cd,tv/cd'
-SOURCE_APPLETV = 'video2,cbl,sat'
+
 
 @app.route('/')
 def index():
     return "Onkyo API says hello!"
 
-
-
-@app.route('/onkyo/status', methods=['GET'])
-def get_status():
-    receiver = eiscp.eISCP(receiver_address)
-    main_power_result = receiver.command('main.power=query')
-    main_power_status = main_power_result[1]
-    if isinstance(main_power_status, tuple): # main power gives standby,off
-        main_power_status = main_power_status[0]
-    main_volume = receiver.command('main.volume=query')[1]
-    main_source = receiver.command('main.source=query')[1]
-    if isinstance(main_source, tuple):
-        main_source = ','.join(main_source)
-
-    receiver.disconnect()
-
-    return jsonify(
-    {
-      "status": {
-        "main": {
-            "status": main_power_status,
-            "volume": volume_output(main_volume),
-            "source": source_output(main_source)
-        }
-      }
-    })
 
 app.run(host='0.0.0.0', port=8080)

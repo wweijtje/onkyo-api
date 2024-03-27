@@ -2,6 +2,8 @@
 
 Use a Raspberry Pi Zero to expose an API to my Onkyo Receiver for an iOS app or bOS integration.
 
+Defaults by assuming the receiver is at 192.168.0.162, but can be updated using the /onkyo/discover
+
 ## Install
 
 ```sh
@@ -19,7 +21,7 @@ $ ./app.py
 ### Aggregates the results of several commands into an easy status response
 GET `/onkyo/status`
 ```sh
-$ curl "http://localhost:8080/onkyo/status"
+$ curl "http://localhost:8080/onkyo/main/status"
 ```
 
 ```json
@@ -38,20 +40,25 @@ $ curl "http://localhost:8080/onkyo/status"
   }
 }
 ```
+### Discover devices
+Will also set the first device found as default
+
+POST `/onkyo/discover`
+```sh
+$ curl -X "POST" "http://localhost:8080/onkyo/discover"  
+```
 
 ### Controlling power status
-PUT `/onkyo/<zone>/power/<value>`
+POST `/onkyo/<zone>/power/<value>`
 ```sh
-$ curl -X "PUT" "http://localhost:8080/onkyo/main/power/on"
-$ curl -X "PUT" "http://localhost:8080/onkyo/main/power/standby"
-$ curl -X "PUT" "http://localhost:8080/onkyo/zone2/power/on"
-$ curl -X "PUT" "http://localhost:8080/onkyo/zone2/power/standby"
+$ curl -X "POST" "http://localhost:8080/onkyo/main/power/on"
+$ curl -X "POST" "http://localhost:8080/onkyo/main/power/standby"
 ```
 
 ### Controlling volume
 PUT `/onkyo/<zone>/volume/<level>`
 ```sh
-$ curl -X "PUT" "http://localhost:8080/onkyo/main/volume/55"
+$ curl -X "POST" "http://localhost:8080/onkyo/main/volume/55"
 ```
 
 ```json
