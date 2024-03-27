@@ -81,6 +81,8 @@ def set_tunein_preset(zone, preset):
     if zone != 'main':
         return 'unknown zone', 400
 
+
+
     with eiscp.eISCP(receiver_address) as receiver:
         _ = receiver.raw("SLI2B") # Set to NET
 
@@ -122,7 +124,7 @@ SOURCE_APPLETV = 'video2,cbl,sat'
 
 @app.route('/')
 def index():
-    return "Hello, World!"
+    return "Onkyo API says hello!"
 
 @app.route('/onkyo/status', methods=['GET'])
 def get_status():
