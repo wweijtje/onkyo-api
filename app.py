@@ -11,17 +11,30 @@ SOURCE_TV = 'cd,tv/cd'
 
 @app.route('/')
 def index():
-    return "Hello, World!"
+    return "Onkyo API says hello!"
 
-@app.route('/onkyo/status', methods=['GET'])
-def get_status():
+def _get_power_status(receiver:eiscp.eISCP,zone='main'):
+    """
+    Collects the power status
+
+    :param receiver: receiver object
+    :param zone: default 'main'
+    :return:
+    """
+    power_result = receiver.command(f'{zone}.power=query')
+    power_status = power_result[1]
+    if isinstance(power_status, tuple): # main power gives standby,off
+        power_status = power_status[0]
+
+    return power_status
+
+@app.route('/onkyo/<string:zone>/status', methods=['GET'])
+def get_status(zone):
     receiver = eiscp.eISCP(receiver_address)
-    main_power_result = receiver.command('main.power=query')
-    main_power_status = main_power_result[1]
-    if isinstance(main_power_status, tuple): # main power gives standby,off
-        main_power_status = main_power_status[0]
-    main_volume = receiver.command('main.volume=query')[1]
-    main_source = receiver.command('main.source=query')[1]
+    main_power_status = _get_power_status(receiver, zone=zone)
+
+    main_volume = receiver.command(f'{zone}.volume=query')[1]
+    main_source = receiver.command(f'{zone}.source=query')[1]
     if isinstance(main_source, tuple):
         main_source = ','.join(main_source)
 
@@ -30,7 +43,7 @@ def get_status():
     return jsonify(
     {
       "status": {
-        "main": {
+        f"{zone}": {
             "status": main_power_status,
             "volume": volume_output(main_volume),
             "source": source_output(main_source)
@@ -81,9 +94,14 @@ def set_tunein_preset(zone, preset):
     if zone != 'main':
         return 'unknown zone', 400
 
-
-
     with eiscp.eISCP(receiver_address) as receiver:
+        # Check if the power is on, if not turn on the device
+        status = _get_power_status(receiver, zone=zone)
+        if status == 'standby':
+            # Turn device on and wait a bit
+            receiver.command(zone + '.power=' + status)
+            sleep(3)
+
         _ = receiver.raw("SLI2B") # Set to NET
 
         receiver.send("NSV0E0") # Set to Tunein
@@ -126,6 +144,8 @@ SOURCE_APPLETV = 'video2,cbl,sat'
 def index():
     return "Onkyo API says hello!"
 
+
+
 @app.route('/onkyo/status', methods=['GET'])
 def get_status():
     receiver = eiscp.eISCP(receiver_address)
@@ -138,13 +158,6 @@ def get_status():
     if isinstance(main_source, tuple):
         main_source = ','.join(main_source)
 
-    zone2_power_result = receiver.command('zone2.power=query')
-    zone2_power_status = zone2_power_result[1]
-    zone2_volume = receiver.command('zone2.volume=query')[1]
-    zone2_source = receiver.command('zone2.selector=query')[1]
-    if isinstance(zone2_source, tuple):
-        zone2_source = ','.join(zone2_source)
-
     receiver.disconnect()
 
     return jsonify(
@@ -154,52 +167,8 @@ def get_status():
             "status": main_power_status,
             "volume": volume_output(main_volume),
             "source": source_output(main_source)
-        },
-        "zone2": {
-            "status": zone2_power_status,
-            "volume": volume_output(zone2_volume),
-            "source": source_output(zone2_source)
         }
       }
     })
-
-@app.route('/onkyo/<string:zone>/power/<string:status>', methods=['PUT'])
-def set_power(zone, status):
-    if zone != 'main' and zone != 'zone2':
-        return 'unknown zone', 400
-    if status != 'on' and status != 'standby':
-        return 'unknown status', 400
-    receiver = eiscp.eISCP(receiver_address)
-    receiver.command(zone + '.power=' + status)
-    receiver.disconnect()
-    return get_status()
-
-@app.route('/onkyo/<string:zone>/volume/<int:level>', methods=['PUT'])
-def set_volume(zone, level):
-    if zone != 'main' and zone != 'zone2':
-        return 'unknown zone', 400
-    if level < 0: level = 0
-    if level > 80: level = 80
-
-    receiver = eiscp.eISCP(receiver_address)
-    receiver.command(zone + '.volume=' + str(level))
-    receiver.disconnect()
-
-    return jsonify(
-    {
-        "zone": zone,
-        "volume": level
-    })
-
-def volume_output(volume):
-    return volume if volume != 'N/A' else 0
-
-def source_output(source):
-    if source == SOURCE_TV:
-        return 'tv'
-    elif source == SOURCE_APPLETV:
-        return 'appletv'
-    else:
-        return source
 
 app.run(host='0.0.0.0', port=8080)
