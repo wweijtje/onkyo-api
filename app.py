@@ -5,7 +5,7 @@ from flask import Flask, jsonify
 import eiscp
 
 app = Flask(__name__)
-app.debug = True
+app.debug = False
 receiver_address = '192.168.0.162'
 SOURCE_TV = 'cd,tv/cd'
 
