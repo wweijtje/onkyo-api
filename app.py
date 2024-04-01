@@ -51,15 +51,13 @@ def discover():
 
 @app.route('/onkyo/<string:zone>/status', methods=['GET'])
 def get_status(zone):
-    receiver = eiscp.eISCP(receiver_address)
-    main_power_status = _get_power_status(receiver, zone=zone)
+    with eiscp.eISCP(receiver_address) as receiver:
+        main_power_status = _get_power_status(receiver, zone=zone)
 
-    main_volume = receiver.command(f'{zone}.volume=query')[1]
-    main_source = receiver.command(f'{zone}.source=query')[1]
-    if isinstance(main_source, tuple):
-        main_source = ','.join(main_source)
-
-    receiver.disconnect()
+        main_volume = receiver.command(f'{zone}.volume=query')[1]
+        main_source = receiver.command(f'{zone}.source=query')[1]
+        if isinstance(main_source, tuple):
+            main_source = ','.join(main_source)
 
     return jsonify(
     {
@@ -91,9 +89,8 @@ def set_volume(zone, level):
     if level < 0: level = 0
     if level > 100: level = 100
 
-    receiver = eiscp.eISCP(receiver_address)
-    receiver.command(zone + '.volume=' + str(level))
-    receiver.disconnect()
+    with eiscp.eISCP(receiver_address) as receiver:
+        receiver.command(zone + '.volume=' + str(level))
 
     return jsonify(
     {
@@ -150,19 +147,3 @@ def source_output(source):
     else:
         return source
 
-app.run(host='0.0.0.0', port=8080)
-#!/usr/bin/env python
-
-from flask import Flask, jsonify
-import eiscp
-
-app = Flask(__name__)
-app.debug = True
-
-
-@app.route('/')
-def index():
-    return "Onkyo API says hello!"
-
-
-app.run(host='0.0.0.0', port=8080)
